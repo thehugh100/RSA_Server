@@ -17,6 +17,10 @@
 #include <ostream>
 #include <fstream>
 
+#include "json.hpp"
+
+#include "Base64.h"
+
 using boost::asio::ip::tcp;
 
 std::string pubKey;
@@ -35,7 +39,14 @@ public:
     {
         std::cout << "Client connected: " << socket_.remote_endpoint().address() << std::endl;
         //send public key
-        do_write(boost::asio::buffer(pubKey, pubKey.length()));
+
+        nlohmann::json data;
+        data["type"] = "RSA_PUB";
+        data["data"] = pubKey;
+
+        std::string data_json = data.dump();
+
+        do_write(boost::asio::buffer(data_json, data_json.size()));
         std::cout << "Sent Public Key" << std::endl;
         do_read();
     }
