@@ -33,7 +33,27 @@ public:
 
     void start()
     {
+        std::cout << "Client connected: " << socket_.remote_endpoint().address() << std::endl;
+        //send public key
+        do_write(boost::asio::buffer(pubKey, pubKey.length()));
+        std::cout << "Sent Public Key" << std::endl;
         do_read();
+    }
+
+    void readPacket(boost::asio::const_buffer packet) {
+        uint32_t dataSize = 0;
+        memcpy(&dataSize, packet.data(), 4);
+        std::cout << "Packet Size: " << dataSize << std::endl;
+        if (dataSize > packet_body_length || dataSize > packet.size()) {
+            //big problem, packet too big
+            std::cout << "Malformed Packet" << std::endl;
+            return;
+        }
+
+        memcpy(packet_body, (const char *)packet.data() + 4, dataSize);
+        std::cout << std::string(packet_body, dataSize) << std::endl;
+
+        do_write(boost::asio::buffer(packet_body, dataSize));
     }
 
 private:
@@ -45,29 +65,43 @@ private:
             {
                 if (!ec)
                 {
-                    data_[length] = '\0';
-                    std::cout << data_ << std::endl;
-                    do_write(boost::asio::buffer(data_, length));
+                    //data_[length] = '\0';
+                    //std::cout << data_ << std::endl;
+                    // do_write(boost::asio::buffer(data_, length));
+                    readPacket(boost::asio::buffer(data_, length));
+                    do_read();
+                }
+                else {
+                    std::cout << ec.message() << std::endl;
                 }
             });
     }
 
-    void do_write(boost::asio::mutable_buffer response)
+    void do_write(boost::asio::const_buffer response)
     {
+        uint32_t totalSize = response.size() + 4;
+        char *packet = new char[totalSize];
+
+        uint32_t size = response.size();
+        memcpy(&packet[0], &size, 4);
+        memcpy(&packet[4], response.data(), size);
+
         auto self(shared_from_this());
-        boost::asio::async_write(socket_, response,
-            [this, self](boost::system::error_code ec, std::size_t /*length*/)
+        boost::asio::async_write(socket_, boost::asio::buffer(packet, totalSize),
+            [this, self, packet](boost::system::error_code ec, std::size_t /*length*/)
             {
                 if (!ec)
                 {
-                    do_read();
                 }
+                delete[] packet;
             });
     }
 
     tcp::socket socket_;
     enum { max_length = 4096 };
     char data_[max_length];
+    const int packet_body_length = 4096;
+    char packet_body[4096];
 };
 
 class server
