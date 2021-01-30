@@ -39,6 +39,7 @@ private:
             {
                 if (!ec)
                 {
+                    data_[length] = '\0';
                     std::cout << data_ << std::endl;
                     do_write(length);
                 }
