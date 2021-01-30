@@ -13,8 +13,14 @@
 #include <memory>
 #include <utility>
 #include <boost/asio.hpp>
+#include <boost/filesystem.hpp>
+#include <ostream>
+#include <fstream>
 
 using boost::asio::ip::tcp;
+
+std::string pubKey;
+std::string priKey;
 
 class session
     : public std::enable_shared_from_this<session>
@@ -41,15 +47,15 @@ private:
                 {
                     data_[length] = '\0';
                     std::cout << data_ << std::endl;
-                    do_write(length);
+                    do_write(boost::asio::buffer(data_, length));
                 }
             });
     }
 
-    void do_write(std::size_t length)
+    void do_write(boost::asio::mutable_buffer response)
     {
         auto self(shared_from_this());
-        boost::asio::async_write(socket_, boost::asio::buffer(data_, length),
+        boost::asio::async_write(socket_, response,
             [this, self](boost::system::error_code ec, std::size_t /*length*/)
             {
                 if (!ec)
@@ -60,7 +66,7 @@ private:
     }
 
     tcp::socket socket_;
-    enum { max_length = 1024 };
+    enum { max_length = 4096 };
     char data_[max_length];
 };
 
@@ -91,13 +97,38 @@ private:
     tcp::acceptor acceptor_;
 };
 
+std::string slurp(std::ifstream& in) {
+    std::ostringstream sstr;
+    sstr << in.rdbuf();
+    return sstr.str();
+}
+
 int main(int argc, char* argv[])
 {
+    if (boost::filesystem::exists("keys/public-key.pem") && boost::filesystem::exists("keys/private-key.pem"))
+    {
+        std::ifstream pub("keys/public-key.pem", std::ios::in);
+        pubKey = slurp(pub);
+        pub.close();
+
+        std::ifstream pri("keys/private-key.pem", std::ios::in);
+        priKey = slurp(pri);
+        pri.close();
+
+        std::cout << "Loaded Keys" << std::endl;
+    }
+    else
+    {
+        std::cout << "No RSA key-pair Found. Shutting down.";
+        exit(EXIT_FAILURE);
+    }
     try
     {
+        int port = 32500;
         boost::asio::io_context io_context;
+        server s(io_context, port);
 
-        server s(io_context, 32500);
+        std::cout << "Started server on port " << port << std::endl;
 
         io_context.run();
     }
