@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 #include <boost/asio.hpp>
+#include <vector>
 
 using boost::asio::ip::tcp;
 

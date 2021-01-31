@@ -38,7 +38,7 @@ void server::do_accept()
         {
             if (!ec)
             {
-                std::make_shared<session>(std::move(socket))->start(pubKey, priKey);
+                std::make_shared<session>(std::move(socket), this)->start();
             }
 
             do_accept();

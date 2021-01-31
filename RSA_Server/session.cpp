@@ -3,22 +3,21 @@
 #include "json.hpp"
 #include "Base64.h"
 
-session::session(tcp::socket socket)
-    : socket_(std::move(socket)), packet_body_length(4096)
+#include "server.h"
+
+session::session(tcp::socket socket, server* serverPtr)
+    : socket_(std::move(socket)), serverPtr(serverPtr), packet_body_length(4096)
 {
 }
 
-void session::start(std::string pub, std::string priv)
+void session::start()
 {
-    pubKey = pub;
-    priKey = priv;
-
     std::cout << "Client connected: " << socket_.remote_endpoint().address() << std::endl;
     //send public key
 
     nlohmann::json data;
     data["type"] = "RSA_PUB";
-    data["data"] = pubKey;
+    data["data"] = serverPtr->pubKey;
 
     std::string data_json = data.dump();
 
