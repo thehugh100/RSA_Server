@@ -16,8 +16,7 @@ void session::start()
     //send public key
 
     nlohmann::json data;
-    data["type"] = "RSA_PUB";
-
+    data["type"] = "welcome";
     std::string publicKeyStr(serverPtr->publicRSAKey, serverPtr->publicKeyLength);
     std::string publicKeyB64 = macaron::Base64::Encode(publicKeyStr);
 
@@ -26,7 +25,7 @@ void session::start()
     std::string data_json = data.dump();
 
     do_write(boost::asio::buffer(data_json, data_json.size()));
-    std::cout << "Sent Public Key" << std::endl;
+    std::cout << "\tSent Welcome Message" << std::endl;
     do_read();
 }
 
@@ -52,7 +51,7 @@ void session::readPacket(boost::asio::const_buffer packet)
         if (j["type"] == "announce")
         {
             std::string clientPublicKey;
-            macaron::Base64::Decode(j["data"].get<std::string>(), clientPublicKey);
+            macaron::Base64::Decode(j["aes_key"].get<std::string>(), clientPublicKey);
 
             std::cout << clientPublicKey << std::endl;
         }

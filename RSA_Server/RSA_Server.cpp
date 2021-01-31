@@ -10,9 +10,9 @@
 
 #include "Base64.h"
 
+#include "utility.h"
 #include "session.h"
 #include "server.h"
-
 using boost::asio::ip::tcp;
 
 int main(int argc, char* argv[])
