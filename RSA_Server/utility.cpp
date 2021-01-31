@@ -79,6 +79,37 @@ std::string Utility::AESDecryptData_B64(std::string ciphertextb64, std::string k
     return decryptedtext;
 }
 
+std::string Utility::RSAEncrypt(CryptoPP::RSA::PublicKey publicKey, std::string plain)
+{
+    CryptoPP::AutoSeededRandomPool rng;
+    CryptoPP::RSAES_OAEP_SHA_Encryptor e(publicKey);
+
+    std::string cipher = "";
+
+    CryptoPP::StringSource ss1(plain, true,
+        new CryptoPP::PK_EncryptorFilter(rng, e,
+            new CryptoPP::StringSink(cipher)
+        ) // PK_EncryptorFilter
+    ); // StringSource
+
+    return cipher;
+}
+
+std::string Utility::RSADecrypt(CryptoPP::RSA::PrivateKey privateKey, std::string cipher)
+{
+    std::string recovered;
+    CryptoPP::AutoSeededRandomPool rng;
+    CryptoPP::RSAES_OAEP_SHA_Decryptor d(privateKey);
+
+    CryptoPP::StringSource ss2(cipher, true,
+        new CryptoPP::PK_DecryptorFilter(rng, d,
+            new CryptoPP::StringSink(recovered)
+        ) // PK_DecryptorFilter
+    ); // StringSource
+
+    return recovered;
+}
+
 std::string Utility::slurp(std::ifstream& in)
 {
     std::ostringstream sstr;
@@ -111,13 +142,13 @@ void Utility::genRSAKeyPair(uint32_t size)
     CryptoPP::InvertibleRSAFunction privkey;
     privkey.Initialize(rng, size);
 
-    CryptoPP::Base64Encoder privkeysink(new CryptoPP::FileSink("keys/private-key.der"));
+    CryptoPP::FileSink privkeysink("keys/private-key.der");
     privkey.DEREncode(privkeysink);
     privkeysink.MessageEnd();
 
     CryptoPP::RSAFunction pubkey(privkey);
 
-    CryptoPP::Base64Encoder pubkeysink(new CryptoPP::FileSink("keys/public-key.der"));
+    CryptoPP::FileSink pubkeysink("keys/public-key.der");
     pubkey.DEREncode(pubkeysink);
     pubkeysink.MessageEnd();
 
