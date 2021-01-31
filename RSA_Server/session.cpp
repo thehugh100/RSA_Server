@@ -17,7 +17,11 @@ void session::start()
 
     nlohmann::json data;
     data["type"] = "RSA_PUB";
-    data["data"] = serverPtr->pubKey;
+
+    std::string publicKeyStr(serverPtr->publicRSAKey, serverPtr->publicKeyLength);
+    std::string publicKeyB64 = macaron::Base64::Encode(publicKeyStr);
+
+    data["data"] = publicKeyB64;
 
     std::string data_json = data.dump();
 

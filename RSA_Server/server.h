@@ -16,9 +16,10 @@ public:
 
     void loadKeys();
 
-    std::string pubKey;
-    std::string priKey;
-
+    char* publicRSAKey;
+    char* privateRSAKey;
+    size_t publicKeyLength;
+    size_t privateKeyLength;
 private:
     void do_accept();
 
