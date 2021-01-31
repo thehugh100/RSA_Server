@@ -148,10 +148,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="RSA_Server.cpp" />
+    <ClCompile Include="server.cpp" />
+    <ClCompile Include="session.cpp" />
+    <ClCompile Include="utility.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Base64.h" />
     <ClInclude Include="json.hpp" />
+    <ClInclude Include="server.h" />
+    <ClInclude Include="session.h" />
+    <ClInclude Include="utility.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
