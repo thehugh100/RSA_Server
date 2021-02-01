@@ -38,6 +38,7 @@ void server::loadKeys()
     else
     {
         Utility::genRSAKeyPair(2048);
+        loadKeys();
     }
 }
 

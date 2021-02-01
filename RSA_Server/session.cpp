@@ -37,7 +37,7 @@ void session::start()
 
     do_write(boost::asio::buffer(data_json, data_json.size()));
     std::cout << "\tSent Welcome Message" << std::endl;
-    std::cout << "\tPublic Key Length: " << serverPtr->publicKeyLength;
+    std::cout << "\tPublic Key Length: " << serverPtr->publicKeyLength << std::endl;
     do_read();
 }
 
