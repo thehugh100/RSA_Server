@@ -137,7 +137,7 @@ void session::readPacket(boost::asio::const_buffer packet)
         }
         if (j["type"] == "echo")
         {
-            std::cout << "echo" << std::endl;
+            std::cout << "echo: " << j["data"] << std::endl;
             do_write(boost::asio::buffer(packet_body, dataSize));
         }
     }
