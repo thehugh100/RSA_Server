@@ -2,6 +2,7 @@
 #include <sstream>
 #include <fstream>
 
+#include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
 #include <sha.h>
 #include <hex.h>
@@ -116,6 +117,8 @@ void Utility::genRSAKeyPair(uint32_t size)
     CryptoPP::AutoSeededRandomPool rng;
     CryptoPP::InvertibleRSAFunction privkey;
     privkey.Initialize(rng, size);
+	
+	boost::filesystem::create_directory("keys");
 
     CryptoPP::FileSink privkeysink("keys/private-key.der");
     privkey.DEREncode(privkeysink);
