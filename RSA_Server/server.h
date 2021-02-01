@@ -6,6 +6,7 @@
 #include <utility>
 #include <boost/asio.hpp>
 #include <vector>
+#include "keyring.h"
 
 using boost::asio::ip::tcp;
 
@@ -15,6 +16,8 @@ public:
     server(boost::asio::io_context& io_context, short port);
 
     void loadKeys();
+
+    Keyring* keyring;
 
     char* publicRSAKey;
     char* privateRSAKey;

@@ -6,6 +6,7 @@
 server::server(boost::asio::io_context& io_context, short port)
     : acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
 {
+    keyring = new Keyring();
     loadKeys();
     do_accept();
 }

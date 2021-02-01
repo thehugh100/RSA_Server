@@ -21,7 +21,7 @@ public:
 
 private:
     void do_read();
-
+    void sendClientPing();
     void do_write(boost::asio::const_buffer response);
 
     std::vector<CryptoPP::byte> aes_key_decoded;

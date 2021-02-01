@@ -149,6 +149,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="keyring.cpp" />
     <ClCompile Include="RSA_Server.cpp" />
     <ClCompile Include="server.cpp" />
     <ClCompile Include="session.cpp" />
@@ -157,6 +158,7 @@
   <ItemGroup>
     <ClInclude Include="Base64.h" />
     <ClInclude Include="json.hpp" />
+    <ClInclude Include="keyring.h" />
     <ClInclude Include="server.h" />
     <ClInclude Include="session.h" />
     <ClInclude Include="utility.h" />

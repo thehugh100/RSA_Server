@@ -36,8 +36,10 @@ void session::start()
     std::string data_json = data.dump();
 
     do_write(boost::asio::buffer(data_json, data_json.size()));
+
+    sendClientPing();
+
     std::cout << "\tSent Welcome Message" << std::endl;
-    std::cout << "\tPublic Key Length: " << serverPtr->publicKeyLength << std::endl;
     do_read();
 }
 
@@ -46,6 +48,7 @@ void session::readPacket(boost::asio::const_buffer packet)
     uint32_t dataSize = 0;
     memcpy(&dataSize, packet.data(), 4);
     //std::cout << "Packet Size: " << dataSize << std::endl;
+
     if (dataSize > packet_body_length || dataSize > packet.size())
     {
         //big problem, packet too big
@@ -54,14 +57,18 @@ void session::readPacket(boost::asio::const_buffer packet)
     }
 
     memcpy(packet_body, (const char*)packet.data() + 4, dataSize);
-    std::cout << std::string(packet_body, dataSize) << std::endl;
+
+    //std::cout << std::string(packet_body, dataSize) << std::endl;
 
     try
     {
+        std::cout << socket_.remote_endpoint().address() << ": ";
         nlohmann::json j = nlohmann::json::parse(std::string(packet_body, dataSize));
 
         if (j["type"] == "announce")
         {
+            std::cout << "announce" << std::endl;
+
             std::string aes_keyb64 = j["aes_key"];
             std::string aes_ivb64 = j["aes_iv"];
 
@@ -89,6 +96,13 @@ void session::readPacket(boost::asio::const_buffer packet)
             d.Decrypt(rng, aes_key_rsa.data(), aes_key_rsa.size(), aes_key_decoded.data());
             d.Decrypt(rng, aes_iv_rsa.data(), aes_iv_rsa.size(), aes_iv_decoded.data());
 
+            if (j.contains("crypt"))
+            {
+                nlohmann::json clientCrypt;
+                Utility::AESDecryptJson(j["crypt"], clientCrypt, aes_key_decoded, aes_iv_decoded);
+                serverPtr->keyring->savePublicKey(socket_.remote_endpoint().address().to_string(), clientCrypt["public_key"]);
+            }
+
             nlohmann::json ready;
             ready["type"] = "crypt";
 
@@ -105,8 +119,25 @@ void session::readPacket(boost::asio::const_buffer packet)
             do_write(boost::asio::buffer(readyMessage.c_str(), readyMessage.size()));
 
         }
+        if (j["type"] == "ping")
+        {
+            if (j.contains("ts"))
+            {
+                uint64_t ts_ = j["ts"];
+                uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()
+                    ).count();
+                std::cout << "Client latency: " << (ms - ts_) / 2 << " ms" << std::endl;
+            }
+        }
+        if (j["type"] == "cping")
+        {
+            std::cout << "cping" << std::endl;
+            do_write(boost::asio::buffer(packet_body, dataSize));
+        }
         if (j["type"] == "echo")
         {
+            std::cout << "echo" << std::endl;
             do_write(boost::asio::buffer(packet_body, dataSize));
         }
     }
@@ -131,6 +162,18 @@ void session::do_read()
                 std::cout << ec.message() << std::endl;
             }
         });
+}
+
+void session::sendClientPing()
+{
+    uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+    nlohmann::json ts;
+    ts["type"] = "ping";
+    ts["ts"] = ms;
+    std::string pingcmd = ts.dump();
+    do_write(boost::asio::buffer(pingcmd.c_str(), pingcmd.size()));
 }
 
 void session::do_write(boost::asio::const_buffer response)
