@@ -4,10 +4,18 @@
 #include "Base64.h"
 
 #include "server.h"
+#include "utility.h"
+
+#include <rsa.h>
+#include <files.h>
+#include <base64.h>
+#include <osrng.h>
 
 session::session(tcp::socket socket, server* serverPtr)
     : socket_(std::move(socket)), serverPtr(serverPtr), packet_body_length(4096)
 {
+    aes_iv_decoded.resize(16);
+    aes_key_decoded.resize(16);
 }
 
 void session::start()
@@ -26,6 +34,7 @@ void session::start()
 
     do_write(boost::asio::buffer(data_json, data_json.size()));
     std::cout << "\tSent Welcome Message" << std::endl;
+    std::cout << "\tPublic Key Length: " << serverPtr->publicKeyLength;
     do_read();
 }
 
@@ -50,10 +59,33 @@ void session::readPacket(boost::asio::const_buffer packet)
 
         if (j["type"] == "announce")
         {
-            std::string clientPublicKey;
-            macaron::Base64::Decode(j["aes_key"].get<std::string>(), clientPublicKey);
+            std::string aes_keyb64 = j["aes_key"];
+            std::string aes_ivb64 = j["aes_iv"];
 
-            std::cout << clientPublicKey << std::endl;
+            std::vector<CryptoPP::byte> aes_key_rsa;
+            aes_key_rsa.resize(256);
+            std::vector<CryptoPP::byte> aes_iv_rsa;
+            aes_iv_rsa.resize(256);
+
+            CryptoPP::StringSource decryptor((CryptoPP::byte*) aes_keyb64.c_str(), aes_keyb64.size(), true,
+                new CryptoPP::Base64Decoder(
+                    new CryptoPP::ArraySink(aes_key_rsa.data(), aes_key_rsa.size())
+                ));
+
+            CryptoPP::StringSource decryptor2((CryptoPP::byte*) aes_ivb64.c_str(), aes_ivb64.size(), true,
+                new CryptoPP::Base64Decoder(
+                    new CryptoPP::ArraySink(aes_iv_rsa.data(), aes_iv_rsa.size())
+                ));
+
+            CryptoPP::StringSource privateKeySS((const CryptoPP::byte* )serverPtr->privateRSAKey, serverPtr->privateKeyLength, true);
+            CryptoPP::RSA::PrivateKey privateKey;
+            privateKey.BERDecode(privateKeySS);
+
+            CryptoPP::AutoSeededRandomPool rng;
+            CryptoPP::RSAES_OAEP_SHA_Decryptor d(privateKey);
+            d.Decrypt(rng, aes_key_rsa.data(), aes_key_rsa.size(), aes_key_decoded.data());
+            d.Decrypt(rng, aes_iv_rsa.data(), aes_iv_rsa.size(), aes_iv_decoded.data());
+
         }
         if (j["type"] == "echo")
         {

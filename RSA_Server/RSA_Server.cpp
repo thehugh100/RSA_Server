@@ -23,17 +23,6 @@ using boost::asio::ip::tcp;
 
 int main(int argc, char* argv[])
 {
-    /*CryptoPP::FileSource input("keys/public-key.der", true);  
-    CryptoPP::RSA::PublicKey publicKey;
-    publicKey.BERDecode(input);
-
-    CryptoPP::FileSource input2("keys/private-key.der", true);
-    CryptoPP::RSA::PrivateKey privateKey;
-    privateKey.BERDecode(input2);
-
-    std::string cipher = Utility::RSAEncrypt(publicKey, "this is the plain text, it's catchy, you like it");
-    std::cout << Utility::RSADecrypt(privateKey, cipher);*/
-
     try
     {
         int port = 32500;

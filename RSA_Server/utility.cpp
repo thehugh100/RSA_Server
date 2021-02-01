@@ -79,35 +79,23 @@ std::string Utility::AESDecryptData_B64(std::string ciphertextb64, std::string k
     return decryptedtext;
 }
 
-std::string Utility::RSAEncrypt(CryptoPP::RSA::PublicKey publicKey, std::string plain)
+void Utility::RSAEncrypt(CryptoPP::RSA::PublicKey publicKey, CryptoPP::byte* plaintext, size_t plaintextLength, CryptoPP::byte* cipherText)
 {
     CryptoPP::AutoSeededRandomPool rng;
     CryptoPP::RSAES_OAEP_SHA_Encryptor e(publicKey);
-
-    std::string cipher = "";
-
-    CryptoPP::StringSource ss1(plain, true,
-        new CryptoPP::PK_EncryptorFilter(rng, e,
-            new CryptoPP::StringSink(cipher)
-        ) // PK_EncryptorFilter
-    ); // StringSource
-
-    return cipher;
+    e.Encrypt(rng, plaintext, plaintextLength, cipherText);
 }
 
-std::string Utility::RSADecrypt(CryptoPP::RSA::PrivateKey privateKey, std::string cipher)
+size_t Utility::RSADecrypt(CryptoPP::RSA::PrivateKey privateKey, CryptoPP::byte* cipher, size_t cipherLength, CryptoPP::byte* plaintext)
 {
-    std::string recovered;
     CryptoPP::AutoSeededRandomPool rng;
     CryptoPP::RSAES_OAEP_SHA_Decryptor d(privateKey);
+    auto res = d.Decrypt(rng, cipher, cipherLength, plaintext);
 
-    CryptoPP::StringSource ss2(cipher, true,
-        new CryptoPP::PK_DecryptorFilter(rng, d,
-            new CryptoPP::StringSink(recovered)
-        ) // PK_DecryptorFilter
-    ); // StringSource
+    if (!res.isValidCoding)
+        std::cout << "RSA Crypto Error on Decryption: Invalid Coding" << std::endl;
 
-    return recovered;
+    return res.messageLength;
 }
 
 std::string Utility::slurp(std::ifstream& in)

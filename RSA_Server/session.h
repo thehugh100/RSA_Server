@@ -5,7 +5,8 @@
 #include <memory>
 #include <utility>
 #include <boost/asio.hpp>
-
+#include <base64.h>
+#include <vector>
 using boost::asio::ip::tcp;
 
 class server;
@@ -23,6 +24,9 @@ private:
 
     void do_write(boost::asio::const_buffer response);
 
+    std::vector<CryptoPP::byte> aes_key_decoded;
+    std::vector<CryptoPP::byte> aes_iv_decoded;
+    
     tcp::socket socket_;
     enum { max_length = 4096 };
     char data_[max_length];
