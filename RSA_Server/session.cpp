@@ -10,6 +10,9 @@
 #include <files.h>
 #include <base64.h>
 #include <osrng.h>
+#include <aes.h>
+#include <filters.h>
+#include "modes.h"
 
 session::session(tcp::socket socket, server* serverPtr)
     : socket_(std::move(socket)), serverPtr(serverPtr), packet_body_length(4096)
@@ -85,6 +88,21 @@ void session::readPacket(boost::asio::const_buffer packet)
             CryptoPP::RSAES_OAEP_SHA_Decryptor d(privateKey);
             d.Decrypt(rng, aes_key_rsa.data(), aes_key_rsa.size(), aes_key_decoded.data());
             d.Decrypt(rng, aes_iv_rsa.data(), aes_iv_rsa.size(), aes_iv_decoded.data());
+
+            nlohmann::json ready;
+            ready["type"] = "crypt";
+
+            nlohmann::json cryptDat;
+            cryptDat["token"] = "this is the token";
+            cryptDat["other data"] = "this is even more data";
+
+            std::string cryptText;
+            Utility::AESEcryptJson(cryptDat, aes_key_decoded, aes_iv_decoded, cryptText);
+
+            ready["data"] = cryptText;
+
+            std::string readyMessage = ready.dump();
+            do_write(boost::asio::buffer(readyMessage.c_str(), readyMessage.size()));
 
         }
         if (j["type"] == "echo")
