@@ -29,8 +29,6 @@ int main(int argc, char* argv[])
         boost::asio::io_context io_context;
         server s(io_context, port);
 
-        std::cout << "Started server on port " << port << std::endl;
-
         io_context.run();
     }
     catch (std::exception& e)

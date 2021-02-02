@@ -7,8 +7,11 @@
 #include <boost/asio.hpp>
 #include <vector>
 #include "keyring.h"
+#include <vector>
 
 using boost::asio::ip::tcp;
+
+class session;
 
 class server
 {
@@ -23,8 +26,10 @@ public:
     char* privateRSAKey;
     size_t publicKeyLength;
     size_t privateKeyLength;
+
+    std::vector<std::shared_ptr<session>> sessions;
+
 private:
     void do_accept();
-
     tcp::acceptor acceptor_;
 };

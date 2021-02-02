@@ -13,6 +13,7 @@
 #include <aes.h>
 #include <filters.h>
 #include "modes.h"
+#include <algorithm>
 
 session::session(tcp::socket socket, server* serverPtr)
     : socket_(std::move(socket)), serverPtr(serverPtr), packet_body_length(4096)
@@ -101,6 +102,16 @@ void session::readPacket(boost::asio::const_buffer packet)
                 nlohmann::json clientCrypt;
                 Utility::AESDecryptJson(j["crypt"], clientCrypt, aes_key_decoded, aes_iv_decoded);
                 serverPtr->keyring->savePublicKey(socket_.remote_endpoint().address().to_string(), clientCrypt["public_key"]);
+
+                if (clientCrypt.contains("username"))
+                {
+                    macaron::Base64::Decode(clientCrypt["username"], username);
+                    std::cout << username << " connected" << std::endl;
+                }
+                else
+                {
+                    std::cout << "Invalid announce, username not provided" << std::endl;
+                }
             }
 
             nlohmann::json ready;
@@ -117,6 +128,61 @@ void session::readPacket(boost::asio::const_buffer packet)
 
             std::string readyMessage = ready.dump();
             do_write(boost::asio::buffer(readyMessage.c_str(), readyMessage.size()));
+
+        }
+        if (j["type"] == "crypt")
+        {
+            nlohmann::json clientCrypt;
+            Utility::AESDecryptJson(j["data"], clientCrypt, aes_key_decoded, aes_iv_decoded);
+
+            if (clientCrypt["type"] == "online")
+            {
+                nlohmann::json online;
+                online["type"] = "online";
+                for (auto& i : serverPtr->sessions)
+                {
+                    online["users"].push_back(i->username);
+                }
+                std::string cryptDat;
+                Utility::AESEcryptJson(online, aes_key_decoded, aes_iv_decoded, cryptDat);
+
+                nlohmann::json responseContainer;
+                responseContainer["type"] = "crypt";
+                responseContainer["data"] = cryptDat;
+
+                std::string response = responseContainer.dump();
+
+                do_write(boost::asio::buffer(response.c_str(), response.size()));
+            }
+            if (clientCrypt["type"] == "message")
+            {
+                std::cout << clientCrypt.dump() << std::endl;
+                std::string to;
+                std::string message;
+                macaron::Base64::Decode(clientCrypt["to"], to);
+                macaron::Base64::Decode(clientCrypt["data"], message);
+
+                for (auto& i : serverPtr->sessions)
+                {
+                    if (i->username == to)
+                    {
+                        nlohmann::json messageContainer;
+                        messageContainer["type"] = "crypt";
+                        
+                        nlohmann::json from;
+                        from["type"] = "message";
+                        from["from"] = macaron::Base64::Encode(username);
+                        from["data"] = clientCrypt["data"];
+
+                        std::string fromCrypt;
+                        Utility::AESEcryptJson(from, i->aes_key_decoded, i->aes_iv_decoded, fromCrypt);
+
+                        messageContainer["data"] = fromCrypt;
+                        std::string messageComposed = messageContainer.dump();
+                        i->do_write(boost::asio::buffer(messageComposed.c_str(), messageComposed.size()));
+                    }
+                }
+            }
 
         }
         if (j["type"] == "ping")
@@ -137,7 +203,31 @@ void session::readPacket(boost::asio::const_buffer packet)
         }
         if (j["type"] == "echo")
         {
-            std::cout << "echo: " << j["data"] << std::endl;
+            std::string data;
+            macaron::Base64::Decode(j["data"], data);
+
+            std::cout << "echo: [" << data << "] "<< std::endl;
+
+            if (data.find("who") == 0)
+            {
+                std::ostringstream str;
+                str << "Connected Clients:" << std::endl;
+                auto p = serverPtr->sessions;
+                for (auto& i : p)
+                {
+                    if(i->socket_.is_open())
+                        str << i->socket_.remote_endpoint().address().to_string() << std::endl;
+                }
+                std::cout << str.str() << std::endl;
+                nlohmann::json jt;
+
+                jt["type"] = "echo";
+                jt["data"] = macaron::Base64::Encode(str.str());
+                auto d = jt.dump();
+                do_write(boost::asio::buffer(d.c_str(), d.size()));
+                return;
+            }
+
             do_write(boost::asio::buffer(packet_body, dataSize));
         }
     }
@@ -159,7 +249,12 @@ void session::do_read()
                 do_read();
             }
             else {
-                std::cout << ec.message() << std::endl;
+                std::cout << socket_.remote_endpoint().address().to_string() << ": " << ec.message() << " [" << ec.value() << "]" << std::endl;
+                if ((boost::asio::error::eof == ec) || (boost::asio::error::connection_reset == ec))
+                {
+                    auto it = std::find(serverPtr->sessions.begin(), serverPtr->sessions.end(), shared_from_this());
+                    serverPtr->sessions.erase(it);
+                }
             }
         });
 }

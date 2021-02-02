@@ -6,6 +6,7 @@
 server::server(boost::asio::io_context& io_context, short port)
     : acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
 {
+    std::cout << "Started server on port " << port << std::endl;
     keyring = new Keyring();
     loadKeys();
     do_accept();
@@ -50,7 +51,9 @@ void server::do_accept()
         {
             if (!ec)
             {
-                std::make_shared<session>(std::move(socket), this)->start();
+                auto sessionPtr = std::make_shared<session>(std::move(socket), this);
+                sessions.emplace_back(sessionPtr);
+                sessionPtr->start();
             }
 
             do_accept();
