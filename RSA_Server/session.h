@@ -7,6 +7,9 @@
 #include <boost/asio.hpp>
 #include <base64.h>
 #include <vector>
+
+#include "json.hpp"
+
 using boost::asio::ip::tcp;
 
 class server;
@@ -19,14 +22,21 @@ public:
     void start();
     void readPacket(boost::asio::const_buffer packet);
     void do_write(boost::asio::const_buffer response);
+    void sendEncrypted(nlohmann::json message);
+    void disconnect();
+    void printMessage(std::string message);
+    void kick();
 
-    std::string username;
-    std::vector<CryptoPP::byte> aes_key_decoded;
-    std::vector<CryptoPP::byte> aes_iv_decoded;
+    std::string getUsernameB64();
+    std::string getUsername();
+    void setUsername(std::string username_);
 private:
     void do_read();
     void sendClientPing();
 
+    std::string username;
+    std::vector<CryptoPP::byte> aes_key_decoded;
+    std::vector<CryptoPP::byte> aes_iv_decoded;
     
     tcp::socket socket_;
     enum { max_length = 4096 };

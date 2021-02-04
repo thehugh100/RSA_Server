@@ -7,7 +7,8 @@
 #include <boost/asio.hpp>
 #include <vector>
 #include "keyring.h"
-#include <vector>
+
+#include "json.hpp"
 
 using boost::asio::ip::tcp;
 
@@ -17,11 +18,11 @@ class server
 {
 public:
     server(boost::asio::io_context& io_context, short port);
-
     void loadKeys();
 
-    Keyring* keyring;
+    void getOnlineUsers(nlohmann::json& online);
 
+    Keyring* keyring;
     char* publicRSAKey;
     char* privateRSAKey;
     size_t publicKeyLength;

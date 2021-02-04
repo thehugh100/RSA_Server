@@ -6,7 +6,7 @@
 server::server(boost::asio::io_context& io_context, short port)
     : acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
 {
-    std::cout << "Started server on port " << port << std::endl;
+    std::cout << Utility::ANSI_GREEN << "Started server on port " << port << Utility::ANSI_RESET << std::endl;
     keyring = new Keyring();
     loadKeys();
     do_accept();
@@ -41,6 +41,15 @@ void server::loadKeys()
     {
         Utility::genRSAKeyPair(2048);
         loadKeys();
+    }
+}
+
+void server::getOnlineUsers(nlohmann::json& online)
+{
+    online["type"] = "online";
+    for (auto& i : sessions)
+    {
+        online["users"].push_back(i->getUsername());
     }
 }
 

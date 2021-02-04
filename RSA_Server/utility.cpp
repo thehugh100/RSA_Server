@@ -18,6 +18,16 @@
 
 #include "Base64.h"
 
+const std::string Utility::ANSI_RESET = "\033[0m";
+const std::string Utility::ANSI_RED = "\033[01;31m";
+const std::string Utility::ANSI_GREEN = "\033[01;32m";
+const std::string Utility::ANSI_YELLOW = "\033[01;33m";
+const std::string Utility::ANSI_BLUE = "\033[01;34m";
+const std::string Utility::ANSI_MAGENTA = "\033[01;35m";
+const std::string Utility::ANSI_CYAN = "\033[01;36m";
+const std::string Utility::ANSI_CYAN_BG = "\033[01;46m";
+const std::string Utility::ANSI_WHITE = "\033[01;37m";
+
 void Utility::AESEcryptJson(nlohmann::json j, std::vector<CryptoPP::byte> key, std::vector<CryptoPP::byte> iv, std::string& output)
 {
     std::string plaintext = j.dump();

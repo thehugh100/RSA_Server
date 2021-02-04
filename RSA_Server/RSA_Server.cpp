@@ -19,10 +19,18 @@
 #include "filters.h"
 #include "files.h"
 #include <base64.h>
+
 using boost::asio::ip::tcp;
 
 int main(int argc, char* argv[])
 {
+    #if defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        DWORD dwMode = 0;
+        GetConsoleMode(hOut, &dwMode);
+        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        SetConsoleMode(hOut, dwMode);
+    #endif
     try
     {
         int port = 32500;
