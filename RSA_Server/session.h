@@ -26,6 +26,7 @@ public:
     void disconnect();
     void printMessage(std::string message);
     void kick();
+    void notice(std::string notice);
 
     std::string getUsernameB64();
     std::string getUsername();

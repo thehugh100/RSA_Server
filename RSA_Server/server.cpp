@@ -2,12 +2,17 @@
 #include "session.h"
 #include "utility.h"
 #include <boost/filesystem.hpp>
+#include "Base64.h"
 
 server::server(boost::asio::io_context& io_context, short port)
     : acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
 {
     std::cout << Utility::ANSI_GREEN << "Started server on port " << port << Utility::ANSI_RESET << std::endl;
     keyring = new Keyring();
+
+    rooms.emplace_back(new Room("General"));
+    rooms.emplace_back(new Room("Cool Room"));
+
     loadKeys();
     do_accept();
 }
@@ -49,7 +54,25 @@ void server::getOnlineUsers(nlohmann::json& online)
     online["type"] = "online";
     for (auto& i : sessions)
     {
-        online["users"].push_back(i->getUsername());
+        online["users"].push_back(i->getUsernameB64());
+    }
+}
+
+void server::getRooms(nlohmann::json& rooms_)
+{
+    rooms_["type"] = "rooms";
+    for (auto& i : rooms)
+    {
+        rooms_["rooms"].push_back(i->getNameB64());
+    }
+}
+
+void server::notice(std::string notice)
+{
+    std::cout << "Sending Notice: " << notice << std::endl;
+    for (auto& i : sessions)
+    {
+        i->notice(notice);
     }
 }
 

@@ -100,12 +100,12 @@ void session::readPacket(boost::asio::const_buffer packet)
                 {
                     macaron::Base64::Decode(clientCrypt["username"], username);
                     std::cout << username << " connected" << std::endl;
-                    sendEncrypted({ {"type", "announce_response"}, "data", "OK" });
+                    sendEncrypted({ {"type", "announce_response"}, {"data", "OK"} });
                 }
                 else
                 {
                     std::cout << "Invalid announce, username not provided" << std::endl;
-                    sendEncrypted({ {"type", "announce_response"}, "data", "Invalid Username" });
+                    sendEncrypted({ {"type", "announce_response"}, {"data", "Invalid Username"} });
                 }
             }
         }
@@ -114,12 +114,86 @@ void session::readPacket(boost::asio::const_buffer packet)
             nlohmann::json clientCrypt;
             Utility::AESDecryptJson(j["data"], clientCrypt, aes_key_decoded, aes_iv_decoded);
 
+            if (clientCrypt["type"] == "rooms")
+            {
+                printMessage("<sent rooms>");
+                nlohmann::json rooms;
+                serverPtr->getRooms(rooms);
+
+                sendEncrypted(rooms);
+            }
+            if (clientCrypt["type"] == "subscribe")
+            {
+                std::string room;
+                macaron::Base64::Decode(clientCrypt["data"], room);
+
+                for (auto& i : serverPtr->rooms)
+                {
+                    if (i->getName() == room)
+                    {
+                        i->subscribe(shared_from_this());
+                        notice("You have subscribed to: " + room);
+                        break;
+                    }
+                }
+            }
+            if (clientCrypt["type"] == "unsubscribe")
+            {
+                std::string room;
+                macaron::Base64::Decode(clientCrypt["data"], room);
+
+                for (auto& i : serverPtr->rooms)
+                {
+                    if (i->getName() == room)
+                    {
+                        i->unSubscribe(shared_from_this());
+                        notice("You have unsubscribed from: " + room);
+                        break;
+                    }
+                }
+            }
             if (clientCrypt["type"] == "online")
             {
+                printMessage("<sent online>");
                 nlohmann::json online;
                 serverPtr->getOnlineUsers(online);
 
                 sendEncrypted(online);
+            }
+            if (clientCrypt["type"] == "create")
+            {
+                std::string create;
+                std::string name;
+                macaron::Base64::Decode(clientCrypt["create"], create);
+                macaron::Base64::Decode(clientCrypt["name"], name);
+
+                if (create == "room")
+                {
+                    serverPtr->rooms.emplace_back(new Room(name));
+                    serverPtr->notice(getUsername() + " created a new room: '" + name + "'");
+                }
+            }
+            if (clientCrypt["type"] == "remove")
+            {
+                std::string remove;
+                std::string name;
+                macaron::Base64::Decode(clientCrypt["remove"], remove);
+                macaron::Base64::Decode(clientCrypt["name"], name);
+
+                if (remove == "room")
+                {
+                    for (auto& i : serverPtr->rooms)
+                    {
+                        if (i->getName() == name)
+                        {
+                            auto it = std::find(serverPtr->rooms.begin(), serverPtr->rooms.end(), i);
+                            serverPtr->rooms.erase(it);
+
+                            serverPtr->notice(getUsername() + " removed the room: '" + name + "'");
+                            break;
+                        }
+                    }
+                }
             }
             if (clientCrypt["type"] == "message")
             {
@@ -128,6 +202,7 @@ void session::readPacket(boost::asio::const_buffer packet)
                 std::string message;
                 macaron::Base64::Decode(clientCrypt["to"], to);
                 macaron::Base64::Decode(clientCrypt["data"], message);
+                printMessage("<relayed message to: " + to + ">");
 
                 for (auto& i : serverPtr->sessions)
                 {
@@ -139,6 +214,15 @@ void session::readPacket(boost::asio::const_buffer packet)
                         from["data"] = clientCrypt["data"];
 
                         i->sendEncrypted(from);
+                        return;
+                    }
+                }
+                for (auto& i : serverPtr->rooms)
+                {
+                    if (i->getName() == to)
+                    {
+                        i->sendToAllEncrypted({ { "type", "message" }, {"from", macaron::Base64::Encode(username)}, {"room", i->getNameB64()}, {"data", clientCrypt["data"]} });
+                        return;
                     }
                 }
             }
@@ -263,6 +347,11 @@ void session::kick()
     sendEncrypted({ {"type", "notice"}, {"data", macaron::Base64::Encode("You have been kicked from the server.")}});
     disconnect();
     socket_.close();
+}
+
+void session::notice(std::string notice)
+{
+    sendEncrypted({ {"type", "notice"}, {"data", macaron::Base64::Encode(notice)} });
 }
 
 std::string session::getUsernameB64()

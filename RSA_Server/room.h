@@ -12,8 +12,10 @@ public:
 	Room(std::string name);
 	std::vector<std::shared_ptr<session>> sessions;
 
-	void sendToAllEncrypted(nlohmann::json message);
+	std::string getName();
+	std::string getNameB64();
 
+	void sendToAllEncrypted(nlohmann::json message, std::shared_ptr<session> ignore = nullptr);
 	void subscribe(std::shared_ptr<session> session);
 	void unSubscribe(std::shared_ptr<session> session);
 private:

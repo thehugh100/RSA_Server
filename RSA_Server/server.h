@@ -6,9 +6,10 @@
 #include <utility>
 #include <boost/asio.hpp>
 #include <vector>
-#include "keyring.h"
 
+#include "keyring.h"
 #include "json.hpp"
+#include "room.h"
 
 using boost::asio::ip::tcp;
 
@@ -21,6 +22,8 @@ public:
     void loadKeys();
 
     void getOnlineUsers(nlohmann::json& online);
+    void getRooms(nlohmann::json& rooms_);
+    void notice(std::string notice);
 
     Keyring* keyring;
     char* publicRSAKey;
@@ -29,7 +32,7 @@ public:
     size_t privateKeyLength;
 
     std::vector<std::shared_ptr<session>> sessions;
-
+    std::vector<std::shared_ptr<Room>> rooms;
 private:
     void do_accept();
     tcp::acceptor acceptor_;
