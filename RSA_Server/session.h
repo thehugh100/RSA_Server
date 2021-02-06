@@ -28,6 +28,9 @@ public:
     void kick();
     void notice(std::string notice);
 
+	bool subscribeToRoom(std::string roomName);
+	bool unsubscribeFromRoom(std::string roomName);
+
     std::string getUsernameB64();
     std::string getUsername();
     void setUsername(std::string username_);

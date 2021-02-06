@@ -342,3 +342,6 @@ healthchecksdb
 *.der
 *.der
 *.der
+RSA_Server/files/lorem.txt
+RSA_Server/files/meme.jpg
+RSA_Server/files/HeidiSQL.exe

@@ -1,6 +1,7 @@
 #include "room.h"
 #include "session.h"
 #include "Base64.h"
+#include <boost/filesystem.hpp>
 
 Room::Room(std::string name)
 	:name(name)
@@ -16,6 +17,24 @@ std::string Room::getName()
 std::string Room::getNameB64()
 {
 	return macaron::Base64::Encode(name);
+}
+
+void Room::getFiles(nlohmann::json& j)
+{
+	j["type"] = "files";
+	for (auto& i : files)
+	{
+		nlohmann::json jt;
+		jt["filename"] = i->filePath.filename().generic_string();
+		jt["size"] = i->data.size();
+		jt["uid"] = i->uid;
+		j["files"].push_back(jt);
+	}
+}
+
+bool Room::isUserSubscribed(std::shared_ptr<session> session)
+{
+	return std::find(sessions.begin(), sessions.end(), session) != sessions.end();
 }
 
 void Room::sendToAllEncrypted(nlohmann::json message, std::shared_ptr<session> ignore)

@@ -21,6 +21,7 @@ session::session(tcp::socket socket, server* serverPtr)
 
 void session::start()
 {
+	//socket_.set_option(tcp::no_delay(true));
     std::cout << "Client connected: " << socket_.remote_endpoint().address() << std::endl;
     //send public key
 
@@ -98,14 +99,23 @@ void session::readPacket(boost::asio::const_buffer packet)
 
                 if (clientCrypt.contains("username"))
                 {
-                    macaron::Base64::Decode(clientCrypt["username"], username);
-                    std::cout << username << " connected" << std::endl;
-                    sendEncrypted({ {"type", "announce_response"}, {"data", "OK"} });
+					macaron::Base64::Decode(clientCrypt["username"], username);
+					if (Utility::isValidString(username))
+					{
+						std::cout << username << " connected" << std::endl;
+						sendEncrypted({ {"type", "announce_response"}, {"data", "OK"} });
+						subscribeToRoom("General");
+					}
+					else
+					{
+						std::cout << "Invalid announce, username does not meet requirements" << std::endl;
+						sendEncrypted({ {"type", "announce_response"}, {"data", "Invalid Username, Format is: 3 <= len <=16 a-z, A-Z, 0-9, _"} });
+					}
                 }
                 else
                 {
                     std::cout << "Invalid announce, username not provided" << std::endl;
-                    sendEncrypted({ {"type", "announce_response"}, {"data", "Invalid Username"} });
+					sendEncrypted({ {"type", "announce_response"}, {"data", "Invalid Username, Format is: 3 <= len <=16 a-z, A-Z, 0-9, _"} });
                 }
             }
         }
@@ -122,35 +132,85 @@ void session::readPacket(boost::asio::const_buffer packet)
 
                 sendEncrypted(rooms);
             }
+			if (clientCrypt["type"] == "get_chunk")
+			{
+				std::string uid = clientCrypt["uid"];
+				size_t start = clientCrypt["start"];
+				size_t end = clientCrypt["end"];
+				size_t chunkSize = end - start;
+				if (end <= start)
+				{
+					notice("get_chunk error: incorrect chunk parameters");
+					return;
+				}
+				if (chunkSize > 1000000)
+				{
+					notice("get_chunk error: chunk size > 3000");
+					return;
+				}
+				for (auto& i : serverPtr->rooms)
+				{
+					for (auto& r : i->files)
+					{
+						if (r->uid == uid)
+						{
+							if (end > r->data.size())
+							{
+								end = r->data.size();
+								chunkSize = end - start;
+							}
+							std::vector<uint8_t> tempBuf;
+							tempBuf.resize(chunkSize);
+							memcpy(tempBuf.data(), r->data.data() + start, chunkSize);
+
+							nlohmann::json ret;
+							ret["type"] = "get_chunk";
+							ret["start"] = start;
+							ret["end"] = end;
+							ret["size"] = chunkSize;
+							ret["totalSize"] = r->data.size();
+							ret["uid"] = uid;
+							ret["data"] = macaron::Base64::Encode(std::string((const char*)tempBuf.data(), tempBuf.size()));
+							sendEncrypted(ret);
+							printMessage("Sent " + std::to_string(chunkSize) + " Bytes of " + uid);
+							return;
+						}
+					}
+				}
+
+			}
+			if (clientCrypt["type"] == "files")
+			{
+				printMessage("<sent files>");
+				nlohmann::json files;
+
+				std::string room;
+				macaron::Base64::Decode(clientCrypt["data"], room);
+				
+				for (auto& i : serverPtr->rooms)
+				{
+					if (i->getName() == room)
+					{
+						i->getFiles(files);
+						break;
+					}
+				}
+
+				sendEncrypted(files);
+			}
             if (clientCrypt["type"] == "subscribe")
             {
                 std::string room;
                 macaron::Base64::Decode(clientCrypt["data"], room);
 
-                for (auto& i : serverPtr->rooms)
-                {
-                    if (i->getName() == room)
-                    {
-                        i->subscribe(shared_from_this());
-                        notice("You have subscribed to: " + room);
-                        break;
-                    }
-                }
+				subscribeToRoom(room);
             }
             if (clientCrypt["type"] == "unsubscribe")
             {
                 std::string room;
                 macaron::Base64::Decode(clientCrypt["data"], room);
 
-                for (auto& i : serverPtr->rooms)
-                {
-                    if (i->getName() == room)
-                    {
-                        i->unSubscribe(shared_from_this());
-                        notice("You have unsubscribed from: " + room);
-                        break;
-                    }
-                }
+				unsubscribeFromRoom(room);
             }
             if (clientCrypt["type"] == "online")
             {
@@ -352,6 +412,42 @@ void session::kick()
 void session::notice(std::string notice)
 {
     sendEncrypted({ {"type", "notice"}, {"data", macaron::Base64::Encode(notice)} });
+}
+
+bool session::subscribeToRoom(std::string roomName)
+{
+	for (auto& i : serverPtr->rooms)
+	{
+		if (i->getName() == roomName)
+		{
+			if (!i->isUserSubscribed(shared_from_this()))
+			{
+				i->subscribe(shared_from_this());
+				notice("You have subscribed to: " + roomName);
+				return true;
+			}
+			else
+			{
+				notice("You are already subscribed to: " + roomName);
+				return true;
+			}
+		}
+	}
+	notice("Room does not exist");
+}
+
+bool session::unsubscribeFromRoom(std::string roomName)
+{
+	for (auto& i : serverPtr->rooms)
+	{
+		if (i->getName() == roomName)
+		{
+			i->unSubscribe(shared_from_this());
+			notice("You have unsubscribed from: " + roomName);
+			return true;
+		}
+	}
+	notice("Room does not exist");
 }
 
 std::string session::getUsernameB64()

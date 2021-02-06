@@ -17,6 +17,7 @@
 #include "filters.h"
 
 #include "Base64.h"
+#include <random>
 
 const std::string Utility::ANSI_RESET = "\033[0m";
 const std::string Utility::ANSI_RED = "\033[01;31m";
@@ -141,4 +142,47 @@ void Utility::genRSAKeyPair(uint32_t size)
     pubkeysink.MessageEnd();
 
     std::cout << "Generated Key Pair" << std::endl;
+}
+
+std::string Utility::getValidChars()
+{
+	return "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+}
+
+bool Utility::isValidString(std::string in)
+{
+	std::string validChars = getValidChars();
+
+	if (in.length() < 3 || in.length() > 16)
+		return false;
+
+	for (auto& i : in)
+	{
+		bool valid = 0;
+		for (auto& j : validChars)
+		{
+			if (i == j)
+				valid = 1;
+		}
+		if (!valid)
+			return false;
+	}
+	return true;
+}
+
+std::string Utility::filterClientString(std::string in)
+{
+	return std::string();
+}
+
+std::string Utility::genUID(size_t len)
+{
+	std::string validChars = "abcdefghkmnprstuvwxyz23456789";
+	std::mt19937 mt(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+	std::uniform_int_distribution<int> dist(0, validChars.size()-1);
+	std::string ret = "";
+	for (int i = 0; i < len; ++i)
+		ret += validChars[dist(mt)];
+
+	return ret;
 }

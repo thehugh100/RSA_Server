@@ -3,6 +3,7 @@
 #include "utility.h"
 #include <boost/filesystem.hpp>
 #include "Base64.h"
+#include "file.h"
 
 server::server(boost::asio::io_context& io_context, short port)
     : acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
@@ -10,8 +11,14 @@ server::server(boost::asio::io_context& io_context, short port)
     std::cout << Utility::ANSI_GREEN << "Started server on port " << port << Utility::ANSI_RESET << std::endl;
     keyring = new Keyring();
 
-    rooms.emplace_back(new Room("General"));
-    rooms.emplace_back(new Room("Cool Room"));
+	auto general = new Room("General");
+	general->files.emplace_back(new File("files/lorem.txt"));
+	general->files.emplace_back(new File("files/meme.jpg"));
+	general->files.emplace_back(new File("files/HeidiSQL.exe"));
+
+    rooms.emplace_back(general);
+    rooms.emplace_back(new Room("Room_1"));
+	rooms.emplace_back(new Room("Room_2"));
 
     loadKeys();
     do_accept();
