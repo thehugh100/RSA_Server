@@ -172,7 +172,9 @@ void session::readPacket(boost::asio::const_buffer packet)
 							ret["uid"] = uid;
 							ret["data"] = macaron::Base64::Encode(std::string((const char*)tempBuf.data(), tempBuf.size()));
 							sendEncrypted(ret);
-							printMessage("Sent " + std::to_string(chunkSize) + " Bytes of " + uid);
+							std::stringstream ss;
+							ss << "Sent " << chunkSize << " Bytes of " << uid << " [" << end << " of " << r->data.size() << "]";
+							printMessage(ss.str());
 							return;
 						}
 					}
