@@ -11,6 +11,7 @@
 #include <filters.h>
 #include "modes.h"
 #include <algorithm>
+#include <iomanip>
 
 session::session(tcp::socket socket, server* serverPtr)
     : socket_(std::move(socket)), serverPtr(serverPtr), packet_body_length(4096)
@@ -187,7 +188,8 @@ void session::readPacket(boost::asio::const_buffer packet)
 							}
 							else
 							{
-								std::cout << end << " bytes in " << msSince << " ms. " << ((chunkSize / 1024.f / 1024.f) / (msSince / 1000.f)) << "MBps\r              ";
+								std::cout << std::setprecision(4) << end / 1024 << " KB in " << msSince << " ms. " << 
+									((chunkSize / 1024.f / 1024.f) / (msSince / 1000.f)) << " MBps              \r";
 							}
 
 							if (end == r->data.size())
