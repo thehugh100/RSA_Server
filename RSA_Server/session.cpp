@@ -39,6 +39,10 @@ void session::start()
     sendClientPing();
 
     std::cout << "\tSent Welcome Message" << std::endl;
+
+	lastBytesSentTS = std::chrono::high_resolution_clock::now();
+	lastBytesSent = 0;
+
     do_read();
 }
 
@@ -171,10 +175,27 @@ void session::readPacket(boost::asio::const_buffer packet)
 							ret["totalSize"] = r->data.size();
 							ret["uid"] = uid;
 							ret["data"] = macaron::Base64::Encode(std::string((const char*)tempBuf.data(), tempBuf.size()));
+
+							float msSince = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - lastBytesSentTS).count();
+							lastBytesSentTS = std::chrono::high_resolution_clock::now();
+							lastBytesSent = chunkSize;
+
+							if (start == 0)
+							{
+								msSince = 0;
+								printMessage("Starting File Transfer [" + std::to_string(r->data.size()) + " bytes] <" + uid + ">");
+							}
+							else
+							{
+								std::cout << end << " bytes in " << msSince << " ms. " << ((chunkSize / 1024.f / 1024.f) / (msSince / 1000.f)) << "MBps\r              ";
+							}
+
+							if (end == r->data.size())
+							{
+								printMessage("Finished File Transfer <" + uid + ">");
+							}
+
 							sendEncrypted(ret);
-							std::stringstream ss;
-							ss << "Sent " << chunkSize << " Bytes of " << uid << " [" << end << " of " << r->data.size() << "]";
-							printMessage(ss.str());
 							return;
 						}
 					}
