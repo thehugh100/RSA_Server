@@ -12,6 +12,7 @@
 #include "modes.h"
 #include <algorithm>
 #include <iomanip>
+#include <mutex>
 
 session::session(tcp::socket socket, server* serverPtr)
     : socket_(std::move(socket)), serverPtr(serverPtr), packet_body_length(4096)
@@ -175,11 +176,12 @@ void session::readPacket(boost::asio::const_buffer packet)
 							ret["size"] = chunkSize;
 							ret["totalSize"] = r->data.size();
 							ret["uid"] = uid;
-							ret["data"] = macaron::Base64::Encode(std::string((const char*)tempBuf.data(), tempBuf.size()));
+							std::string datam = macaron::Base64::Encode(std::string((const char*)tempBuf.data(), tempBuf.size()));
+							ret["data"] = datam;
 
 							float msSince = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - lastBytesSentTS).count();
 							lastBytesSentTS = std::chrono::high_resolution_clock::now();
-							lastBytesSent = chunkSize;
+							lastBytesSent = datam.size();
 
 							if (start == 0)
 							{
@@ -188,8 +190,8 @@ void session::readPacket(boost::asio::const_buffer packet)
 							}
 							else
 							{
-								std::cout << std::setprecision(4) << end / 1024 << " KB in " << msSince << " ms. " << 
-									((chunkSize / 1024.f / 1024.f) / (msSince / 1000.f)) << " MBps              \r";
+								std::cout << std::setprecision(5) << end / 1024.f << " KB in " << msSince << " ms. " << 
+									((datam.size() / 1024.f / 1024.f) / (msSince / 1000.f)) << " MBps              \r";
 							}
 
 							if (end == r->data.size())
@@ -346,6 +348,8 @@ void session::readPacket(boost::asio::const_buffer packet)
 
 void session::do_read()
 {
+	std::lock_guard<std::mutex> lock(sessionLock);
+
     auto self(shared_from_this());
     socket_.async_read_some(boost::asio::buffer(data_, max_length),
         [this, self](boost::system::error_code ec, std::size_t length)
@@ -379,6 +383,8 @@ void session::sendClientPing()
 
 void session::do_write(boost::asio::const_buffer response)
 {
+	const std::lock_guard<std::mutex> lock(writeLock);
+
     uint32_t totalSize = response.size() + 4;
     char* packet = new char[totalSize];
 

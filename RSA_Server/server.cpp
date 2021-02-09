@@ -12,8 +12,7 @@ server::server(boost::asio::io_context& io_context, short port)
     keyring = new Keyring();
 
 	auto general = new Room("General");
-	general->files.emplace_back(new File("files/lorem.txt"));
-	general->files.emplace_back(new File("files/meme.jpg"));
+	general->files.emplace_back(new File("files/photos.zip"));
 	general->files.emplace_back(new File("files/HeidiSQL.exe"));
 
     rooms.emplace_back(general);

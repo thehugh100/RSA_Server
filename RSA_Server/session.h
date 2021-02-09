@@ -8,7 +8,7 @@
 #include <base64.h>
 #include <vector>
 #include <chrono>
-
+#include <mutex>
 #include "json.hpp"
 
 using boost::asio::ip::tcp;
@@ -42,6 +42,8 @@ private:
     std::string username;
     std::vector<CryptoPP::byte> aes_key_decoded;
     std::vector<CryptoPP::byte> aes_iv_decoded;
+	std::mutex sessionLock;
+	std::mutex writeLock;
 
 	std::chrono::high_resolution_clock::time_point lastBytesSentTS;
 	size_t lastBytesSent;

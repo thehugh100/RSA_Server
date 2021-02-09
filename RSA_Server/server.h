@@ -10,6 +10,7 @@
 #include "keyring.h"
 #include "json.hpp"
 #include "room.h"
+#include <mutex>
 
 using boost::asio::ip::tcp;
 
@@ -30,7 +31,6 @@ public:
     char* privateRSAKey;
     size_t publicKeyLength;
     size_t privateKeyLength;
-
     std::vector<std::shared_ptr<session>> sessions;
     std::vector<std::shared_ptr<Room>> rooms;
 private:
